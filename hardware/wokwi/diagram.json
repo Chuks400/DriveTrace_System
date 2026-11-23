@@ -1,0 +1,407 @@
+{
+    "version":  1,
+    "author":  "DriveTrace",
+    "editor":  "wokwi",
+    "parts":  [
+                  {
+                      "type":  "board-esp32-s3-devkitc-1",
+                      "id":  "esp",
+                      "top":  0,
+                      "left":  30,
+                      "attrs":  {
+
+                                }
+                  },
+                  {
+                      "type":  "wokwi-ili9341",
+                      "id":  "tft",
+                      "top":  -300,
+                      "left":  430,
+                      "attrs":  {
+
+                                }
+                  },
+                  {
+                      "type":  "wokwi-mpu6050",
+                      "id":  "imu",
+                      "top":  290,
+                      "left":  430,
+                      "attrs":  {
+                                    "accelX":  "0",
+                                    "accelY":  "0",
+                                    "accelZ":  "1"
+                                }
+                  },
+                  {
+                      "type":  "wokwi-ds1307",
+                      "id":  "rtc",
+                      "top":  430,
+                      "left":  430,
+                      "attrs":  {
+                                    "initTime":  "now"
+                                }
+                  },
+                  {
+                      "type":  "wokwi-microsd-card",
+                      "id":  "sd",
+                      "top":  -280,
+                      "left":  -300,
+                      "attrs":  {
+
+                                }
+                  },
+                  {
+                      "type":  "wokwi-pushbutton",
+                      "id":  "accelerate",
+                      "top":  70,
+                      "left":  620,
+                      "attrs":  {
+                                    "color":  "green",
+                                    "label":  "Accelerate +10"
+                                }
+                  },
+                  {
+                      "type":  "wokwi-pushbutton",
+                      "id":  "brake",
+                      "top":  155,
+                      "left":  620,
+                      "attrs":  {
+                                    "color":  "yellow",
+                                    "label":  "Brake -10"
+                                }
+                  },
+                  {
+                      "type":  "wokwi-pushbutton",
+                      "id":  "stop",
+                      "top":  240,
+                      "left":  620,
+                      "attrs":  {
+                                    "color":  "red",
+                                    "label":  "Stop"
+                                }
+                  },
+                  {
+                      "type":  "wokwi-pushbutton",
+                      "id":  "demo",
+                      "top":  325,
+                      "left":  620,
+                      "attrs":  {
+                                    "color":  "blue",
+                                    "label":  "Auto Demo"
+                                }
+                  },
+                  {
+                      "type":  "wokwi-led",
+                      "id":  "overspeedLed",
+                      "top":  310,
+                      "left":  -220,
+                      "attrs":  {
+                                    "color":  "red",
+                                    "label":  "OVER SPEED"
+                                }
+                  },
+                  {
+                      "type":  "wokwi-resistor",
+                      "id":  "limitResistor",
+                      "top":  365,
+                      "left":  -250,
+                      "attrs":  {
+                                    "value":  "330"
+                                }
+                  },
+                  {
+                      "type":  "wokwi-text",
+                      "id":  "wheelNote",
+                      "top":  360,
+                      "left":  -80,
+                      "attrs":  {
+                                    "text":  "GPIO6 -\u003e GPIO4 = synthetic wheel magnet pulse (not a physical Hall sensor)"
+                                }
+                  }
+              ],
+    "connections":  [
+                        [
+                            "esp:TX",
+                            "$serialMonitor:RX",
+                            "",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "esp:RX",
+                            "$serialMonitor:TX",
+                            "",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "esp:6",
+                            "esp:4",
+                            "orange",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "esp:3V3.1",
+                            "imu:VCC",
+                            "red",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "esp:GND.1",
+                            "imu:GND",
+                            "black",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "esp:8",
+                            "imu:SDA",
+                            "green",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "esp:9",
+                            "imu:SCL",
+                            "blue",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "imu:AD0",
+                            "esp:3V3.1",
+                            "red",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "esp:3V3.1",
+                            "rtc:5V",
+                            "red",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "esp:GND.1",
+                            "rtc:GND",
+                            "black",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "esp:8",
+                            "rtc:SDA",
+                            "green",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "esp:9",
+                            "rtc:SCL",
+                            "blue",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "tft:VCC",
+                            "esp:5V",
+                            "red",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "tft:GND",
+                            "esp:GND.1",
+                            "black",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "tft:CS",
+                            "esp:10",
+                            "green",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "tft:D/C",
+                            "esp:14",
+                            "purple",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "tft:MOSI",
+                            "esp:11",
+                            "green",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "tft:SCK",
+                            "esp:12",
+                            "blue",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "sd:VCC",
+                            "esp:3V3.1",
+                            "red",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "sd:GND",
+                            "esp:GND.1",
+                            "black",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "sd:CS",
+                            "esp:5",
+                            "green",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "sd:DI",
+                            "esp:11",
+                            "green",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "sd:DO",
+                            "esp:13",
+                            "purple",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "sd:SCK",
+                            "esp:12",
+                            "blue",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "accelerate:1.r",
+                            "esp:18",
+                            "green",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "accelerate:2.r",
+                            "esp:GND.2",
+                            "black",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "brake:1.r",
+                            "esp:17",
+                            "green",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "brake:2.r",
+                            "esp:GND.2",
+                            "black",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "stop:1.r",
+                            "esp:16",
+                            "green",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "stop:2.r",
+                            "esp:GND.2",
+                            "black",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "demo:1.r",
+                            "esp:21",
+                            "green",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "demo:2.r",
+                            "esp:GND.2",
+                            "black",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "esp:7",
+                            "limitResistor:1",
+                            "orange",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "limitResistor:2",
+                            "overspeedLed:A",
+                            "red",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "overspeedLed:C",
+                            "esp:GND.2",
+                            "black",
+                            [
+
+                            ]
+                        ]
+                    ],
+    "dependencies":  {
+
+                     }
+}

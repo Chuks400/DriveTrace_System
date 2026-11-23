@@ -150,3 +150,11 @@ Branch: `main`. Use GitHub Desktop to commit and push subsequent changes. The re
 6. Mount securely on the e-bike and perform cautious, low-speed tests in a controlled location.
 
 **Project state:** Ready for a software demonstration; physical embedded integration remains to be completed.
+
+## Virtual hardware simulation (Wokwi)
+
+The existing repository includes the Wokwi ESP32-S3 circuit in [hardware/wokwi/](hardware/wokwi/). Its `sketch.ino` is the firmware, `diagram.json` is the circuit wiring, and `libraries.txt` lists Arduino libraries. See the [simulator guide](hardware/wokwi/README.md). This is not another DriveTrace application.
+
+To run: open [Wokwi ESP32-S3](https://wokwi.com/projects/new/esp32-s3), copy `sketch.ino` and `diagram.json` into their matching editor tabs, install the three libraries in `libraries.txt`, then press Start Simulation. Use the circuit's **Auto Demo**, **Accelerate +10**, **Brake -10**, and **Stop** buttons. GPIO6 generates synthetic wheel-magnet pulses read by the ESP32 interrupt on GPIO4. The virtual TFT shows measured wheel speed, the peak, pre-stop speed, limit and warning. The MPU6050, RTC stand-in and microSD provide additional sensor and logging interfaces.
+
+**Test status:** The Wokwi CLI diagram linter passed on 23 November 2026 with one informational notice about the S3 board. Wokwi accepted a simulator build into its queue, but compilation and firmware execution are **not yet confirmed**. The virtual wheel is a simulated electrical pulse source rather than an animated car or a calibrated physical speed sensor. The PC dashboard at `http://127.0.0.1:8765` is separate and does not automatically connect to the Wokwi browser.
