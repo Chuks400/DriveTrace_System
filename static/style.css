@@ -59,8 +59,8 @@ button:disabled {opacity:.48;cursor:not-allowed;}
 .road-speed-sign small{font-size:8px;font-weight:700}
 .road-car{position:absolute;left:0;bottom:34px;width:min(224px,36%);height:auto;z-index:4;will-change:transform;filter:drop-shadow(0 7px 7px #1b375822)}
 .road-car svg{display:block;width:100%;overflow:visible}
-.road-wheel{transform-box:fill-box;transform-origin:center;animation:road-wheel-rotate var(--wheel-spin-duration,1s) linear infinite;animation-play-state:paused}
-.road-car[data-moving="true"] .road-wheel{animation-play-state:running}
+.road-wheel path{transform-box:fill-box;transform-origin:center;animation:road-wheel-rotate var(--wheel-spin-duration,1s) linear infinite;animation-play-state:paused}
+.road-car[data-moving="true"] .road-wheel path{animation-play-state:running}
 @keyframes road-wheel-rotate{to{rotate:360deg}}
 .road-is-overspeed{box-shadow:inset 0 0 0 2px #f5afae}
 .road-readout{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:13px}
@@ -71,4 +71,4 @@ button:disabled {opacity:.48;cursor:not-allowed;}
 .road-readout .road-alert-danger{color:#d34655}
 .road-disclaimer{color:#8c9bb1;font-size:10px;line-height:1.5;margin:12px 0 0}
 @media(max-width:700px){.road-panel-heading{flex-wrap:wrap}.road-scene{height:215px}.road-car{bottom:36px}.road-readout{grid-template-columns:1fr 1fr}.road-readout>div:last-child{grid-column:1/-1}.road-speed-sign{right:12px;top:100px}}
-@media(prefers-reduced-motion:reduce){.road-wheel{animation:none!important}}
+@media(prefers-reduced-motion:reduce){.road-wheel path{animation:none!important}}
