@@ -37,3 +37,38 @@ button:disabled {opacity:.48;cursor:not-allowed;}
 .ride-chart-wrapper{height:185px;margin-top:18px}.ride-chart-wrapper svg{width:100%;height:100%}
 @media(max-width:1140px){.phase4-layout{grid-template-columns:1fr}}
 @media(max-width:690px){.demo-banner{flex-direction:column;align-items:stretch}.ride-metrics{grid-template-columns:repeat(2,1fr)}.ride-selection{flex-wrap:wrap}.ride-selection select{flex-basis:100%}.journey-import{grid-template-columns:1fr}}
+
+
+/* Live vehicle illustration: visually moves across road at speed from DriveTrace telemetry. */
+.drive-road-panel{margin-bottom:18px;overflow:hidden}
+.road-panel-heading{margin-bottom:14px}
+.road-heading-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.road-pause-button{min-height:32px;font-size:10px;padding:6px 10px}
+.road-scene{height:245px;overflow:hidden;border-radius:11px;border:1px solid #d8e5f6;position:relative;background:linear-gradient(180deg,#c9eaff 0%,#dff2ff 57%,#f1f7fb 58%);isolation:isolate}
+.road-sky{position:absolute;inset:0 0 75px;overflow:hidden}
+.road-sun{position:absolute;right:17%;top:19px;width:44px;height:44px;border-radius:50%;background:#ffe5a3;box-shadow:0 0 0 13px #fff3c265}
+.road-cloud{position:absolute;width:98px;height:25px;top:42px;left:18%;border-radius:50px;background:#fff;opacity:.86;box-shadow:20px -9px 0 -3px #fff,-24px -4px 0 -5px #fff}
+.road-cloud-b{left:auto;right:32%;top:72px;transform:scale(.66);opacity:.65}
+.road-hills{position:absolute;inset:84px 0 60px;background:radial-gradient(ellipse 58% 80% at 14% 102%,#b4d9ca 0 85%,transparent 86%),radial-gradient(ellipse 54% 100% at 64% 122%,#a0cdbb 0 85%,transparent 86%),linear-gradient(0deg,#8ec1af,#bbdecf)}
+.road-shoulder{position:absolute;bottom:75px;width:100%;height:13px;background:#c4cfda;border-top:3px solid #fff}
+.road-asphalt{position:absolute;inset:auto 0 0;height:77px;background:linear-gradient(#65738a,#57657c);border-top:5px solid #e1e8f0}
+.road-lanes{position:absolute;left:0;right:0;top:28px;height:5px;background:repeating-linear-gradient(90deg,#fff4cf 0 65px,transparent 65px 134px);opacity:.92}
+.road-speed-sign{position:absolute;right:22px;top:108px;width:49px;height:49px;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#fff;border:5px solid #d94c5e;border-radius:50%;color:#1a3155;box-shadow:0 4px 0 #21385c25;z-index:3}
+.road-speed-sign:after{content:"";position:absolute;height:36px;width:4px;background:#8293ac;top:42px;z-index:-1}
+.road-speed-sign span{font-size:17px;font-weight:900;line-height:1}
+.road-speed-sign small{font-size:8px;font-weight:700}
+.road-car{position:absolute;left:0;bottom:34px;width:min(224px,36%);height:auto;z-index:4;will-change:transform;filter:drop-shadow(0 7px 7px #1b375822)}
+.road-car svg{display:block;width:100%;overflow:visible}
+.road-wheel{transform-box:fill-box;transform-origin:center;animation:road-wheel-rotate var(--wheel-spin-duration,1s) linear infinite;animation-play-state:paused}
+.road-car[data-moving="true"] .road-wheel{animation-play-state:running}
+@keyframes road-wheel-rotate{to{rotate:360deg}}
+.road-is-overspeed{box-shadow:inset 0 0 0 2px #f5afae}
+.road-readout{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:13px}
+.road-readout>div{background:#f6f9ff;border:1px solid #e5edfb;padding:11px 13px;border-radius:8px;min-width:0}
+.road-small-label{display:block;color:#8698b2;font-size:9px;letter-spacing:.8px;font-weight:850;margin-bottom:6px}
+.road-readout strong{font-size:15px;color:#19355e;overflow-wrap:anywhere}
+.road-readout strong small{font-size:10px;color:#8090a9}
+.road-readout .road-alert-danger{color:#d34655}
+.road-disclaimer{color:#8c9bb1;font-size:10px;line-height:1.5;margin:12px 0 0}
+@media(max-width:700px){.road-panel-heading{flex-wrap:wrap}.road-scene{height:215px}.road-car{bottom:36px}.road-readout{grid-template-columns:1fr 1fr}.road-readout>div:last-child{grid-column:1/-1}.road-speed-sign{right:12px;top:100px}}
+@media(prefers-reduced-motion:reduce){.road-wheel{animation:none!important}}

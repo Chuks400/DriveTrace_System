@@ -1,4 +1,58 @@
 'use strict';
+
+// Live illustrated vehicle: uses existing DriveTrace telemetry, not fabricated sensor readings.
+let carVisibleX = null;
+let carSpeedSmoothed = 0;
+let lastCarFrameMs = null;
+let carAnimationPaused = false;
+const carReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function updateCarScene(state) {
+  const rawSpeed = Number(state.speed_kmh);
+  const speed = Number.isFinite(rawSpeed) ? Math.max(0, rawSpeed) : 0;
+  const active = speed > 0.5;
+  const limit = Number(state.limit_kmh) || 50;
+  const overspeed = speed > limit;
+  $('roadLiveSpeed').textContent = speed.toFixed(1);
+  $('roadSpeedLimit').textContent = String(Math.round(limit));
+  $('roadMotionText').textContent = active ? (state.demo_running ? 'Auto driving' : 'Driving') : 'Parked';
+  $('roadAlertText').textContent = overspeed ? '⚠ Over speed limit' : 'Within limit';
+  $('roadAlertText').classList.toggle('road-alert-danger', overspeed);
+  $('roadStatus').textContent = active ? '● MOVING' : '● STATIONARY';
+  $('roadStatus').classList.toggle('is-active', active);
+  $('roadViewport').classList.toggle('road-is-overspeed', overspeed);
+  $('roadViewport').setAttribute('aria-label', 'Illustrated ' + (active ? 'moving' : 'parked') + ' car. Speed ' + speed.toFixed(1) + ' km/h, limit ' + limit + ' km/h.');
+}
+
+function animateRoadCar(now) {
+  const road = $('roadViewport');
+  if (!road) return;
+  const last = lastCarFrameMs == null ? now : lastCarFrameMs;
+  const dt = Math.max(0, Math.min(0.07, (now-last)/1000));
+  lastCarFrameMs = now;
+  const speed = lastState && Number.isFinite(Number(lastState.speed_kmh)) ? Math.max(0,Number(lastState.speed_kmh)) : 0;
+  const animate = !carAnimationPaused && !carReducedMotion && speed > 0.5;
+  const easing = Math.min(1, dt * 7);
+  carSpeedSmoothed += ((animate ? speed : 0) - carSpeedSmoothed) * easing;
+  const frameWidth = road.clientWidth;
+  const carWidth = Math.min(224, frameWidth * .36);
+  if (carVisibleX === null) carVisibleX = frameWidth * .08;
+  if (animate && frameWidth > carWidth) {
+    carVisibleX += dt * (45 + Math.min(160, speed) * 2.9);
+    if (carVisibleX > frameWidth + 12) carVisibleX = -carWidth;
+  }
+  const car = $('roadCar');
+  car.style.transform = 'translate3d(' + carVisibleX.toFixed(1) + 'px,0,0)';
+  car.dataset.moving = animate ? 'true' : 'false';
+  car.style.setProperty('--wheel-spin-duration', Math.max(.15, 1.8 - Math.min(160, carSpeedSmoothed) * .018).toFixed(2) + 's');
+  const lane = $('roadLaneMarks');
+  const offset = Number(lane.dataset.offset || 0);
+  const nextOffset = animate ? (offset + dt * (30 + speed * 4.5)) % 134 : offset;
+  lane.dataset.offset = String(nextOffset);
+  lane.style.backgroundPositionX = (-nextOffset).toFixed(1) + 'px';
+  requestAnimationFrame(animateRoadCar);
+}
+
 const $ = id => document.getElementById(id);
 const svgNS = 'http://www.w3.org/2000/svg';
 let lastState = null;
@@ -132,6 +186,7 @@ function render(state) {
   $('gaugeStatus').textContent = state.speed_kmh > 0 ? (state.overspeed_now ? 'SPEED LIMIT EXCEEDED' : 'VEHICLE MOVING') : 'VEHICLE STOPPED';
   if (!limitFocused) $('speedLimitInput').value = state.limit_kmh;
   drawGauge(state.speed_kmh);
+  updateCarScene(state);
   const paused = !state.running && !state.feed_active;
   const preservedHistory = (state.history && state.history.length) ? state.history :
     (state.latest_event?.samples || []).map(p => ({t:p.t, speed:p.speed_kmh}));
@@ -289,6 +344,8 @@ async function sendCsv(url, file=null) {
 }
 
 function init() {
+  $('roadPauseButton').addEventListener('click',()=>{carAnimationPaused=!carAnimationPaused;$('roadPauseButton').textContent=carAnimationPaused?'Resume animation':'Pause animation';$('roadPauseButton').setAttribute('aria-pressed',String(carAnimationPaused));});
+  requestAnimationFrame(animateRoadCar);
   document.querySelectorAll('button[data-action]').forEach(button => button.addEventListener('click',() => action(button.dataset.action)));
   $('speedLimitInput').addEventListener('focus',() => {limitFocused=true;});
   $('speedLimitInput').addEventListener('blur',() => {limitFocused=false;});

@@ -122,6 +122,52 @@
           </article>
         </section>
 
+        <section class="panel drive-road-panel" id="moving-car" aria-label="Moving vehicle demonstration">
+          <div class="panel-header road-panel-heading">
+            <div>
+              <h2>Moving vehicle simulation</h2>
+              <p>A visible test car driven by the dashboard speed readings. Use Start, Accelerate, Brake, or Stop above.</p>
+            </div>
+            <div class="road-heading-actions">
+              <span class="mini-pill" id="roadStatus">● STATIONARY</span>
+              <button type="button" class="button button-outline road-pause-button" id="roadPauseButton" aria-pressed="false">Pause animation</button>
+            </div>
+          </div>
+          <div class="road-scene" id="roadViewport" role="img" aria-label="Illustrated car parked on a road. Use the simulation controls to make it move.">
+            <div class="road-sky" aria-hidden="true"><span class="road-sun"></span><span class="road-cloud road-cloud-a"></span><span class="road-cloud road-cloud-b"></span></div>
+            <div class="road-hills" aria-hidden="true"></div>
+            <div class="road-shoulder" aria-hidden="true"></div>
+            <div class="road-asphalt" aria-hidden="true"><div class="road-lanes" id="roadLaneMarks"></div></div>
+            <div class="road-car" id="roadCar" data-moving="false" aria-hidden="true">
+              <svg viewBox="0 0 258 122" xmlns="http://www.w3.org/2000/svg">
+                <ellipse cx="125" cy="111" rx="114" ry="9" fill="#132744" opacity=".16"/>
+                <path d="M17 69 L33 64 L55 39 Q66 25 89 25 H171 Q191 25 207 46 L225 64 L238 69 Q245 73 245 85 V93 Q244 100 236 101 H20 Q12 101 12 93 V81 Q12 72 17 69Z" fill="#2364dc" stroke="#184eae" stroke-width="2.5"/>
+                <path d="M59 61 L75 35 H166 Q181 35 194 52 L201 61Z" fill="#a0d8f8" stroke="#154d9a" stroke-width="2"/>
+                <path d="M123 36 L123 61 M80 35 L66 60" stroke="#1456a1" stroke-width="3"/>
+                <path d="M135 70 L189 70" stroke="#77a9ff" stroke-width="3" stroke-linecap="round"/>
+                <rect x="210" y="74" width="27" height="13" rx="4" fill="#ffde7a"/>
+                <rect x="15" y="75" width="12" height="12" rx="3" fill="#ec606d"/>
+                <path d="M28 90 H225" stroke="#0c3f96" stroke-width="4" stroke-linecap="round"/>
+                <g class="road-wheel" transform="translate(67 100)">
+                  <circle r="21" fill="#101a2b"/><circle r="13" fill="#e5ebf5"/><circle r="7" fill="#7e95b7"/>
+                  <path d="M-11 0 H11 M0 -11 V11" stroke="#566987" stroke-width="3" stroke-linecap="round"/>
+                </g>
+                <g class="road-wheel" transform="translate(197 100)">
+                  <circle r="21" fill="#101a2b"/><circle r="13" fill="#e5ebf5"/><circle r="7" fill="#7e95b7"/>
+                  <path d="M-11 0 H11 M0 -11 V11" stroke="#566987" stroke-width="3" stroke-linecap="round"/>
+                </g>
+              </svg>
+            </div>
+            <div class="road-speed-sign" aria-hidden="true"><span id="roadSpeedLimit">50</span><small>km/h</small></div>
+          </div>
+          <div class="road-readout" aria-live="off">
+            <div><span class="road-small-label">CURRENT VEHICLE SPEED</span><strong><span id="roadLiveSpeed">0.0</span> <small>km/h</small></strong></div>
+            <div><span class="road-small-label">MOVEMENT</span><strong id="roadMotionText">Parked</strong></div>
+            <div><span class="road-small-label">ROAD ALERT</span><strong id="roadAlertText">Within limit</strong></div>
+          </div>
+          <p class="road-disclaimer">Illustrative car animation linked to DriveTrace dashboard telemetry. This is not a 3D Wokwi vehicle or calibrated road-speed measurement. The Wokwi electronics simulation runs separately.</p>
+        </section>
+
         <section class="analytics-grid">
           <article class="panel history-panel">
             <div class="panel-header">
