@@ -58,11 +58,3 @@ Based on the uploaded five-page DriveTrace proposal, with purchase order and saf
 5. For initial testing, power the ESP32 via USB. Do not wire a bare lithium battery directly to ESP32 power pins.
 6. Select wheel circumference from the actual wheel, then calibrate the speed equation: **speed_kmh = rotations_per_second × circumference_m × 3.6**.
 7. IMU acceleration integration drifts; use Hall pulses as the primary speed source and GPS as an optional outdoor check, as stated in the proposal.
-
-## Recommended purchasing sequence
-
-**First:** ESP32-S3, Hall sensor, magnet, MPU6050, breadboard, jumper wires, USB data cable. These are enough to start actual sensor programming.  
-**Second:** TFT, microSD module/card, DS3231/backup cell, tamper switch, LEDs, buzzer.  
-**Third:** GPS, RC car/wheel mount, battery solution, enclosure, permanent assembly materials.
-
-Prices, shipping, and stock depend on seller and country. Match actual modules to the specifications above before ordering; don't assume a similar product photo guarantees the same pinout.
