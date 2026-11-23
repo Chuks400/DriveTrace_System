@@ -86,6 +86,7 @@ class WebServerTests(unittest.TestCase):
         event = engine.recorder.last_event
         self.assertEqual(event["payload"]["source"], "HARDWARE")
         self.assertTrue(engine.recorder.verify_file(engine.recorder.last_event_path))
+        engine.shutdown()
 
     def test_tamper_and_reset_keeps_history(self):
         self.post({'action':'tamper'})

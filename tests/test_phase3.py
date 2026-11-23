@@ -13,6 +13,7 @@ class Phase3DataTests(unittest.TestCase):
         self.engine.external_input = True
 
     def tearDown(self):
+        self.engine.shutdown()
         self.dir.cleanup()
 
     def test_replay_reports_replay_not_hardware(self):

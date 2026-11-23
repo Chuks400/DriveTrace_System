@@ -4,6 +4,8 @@ const svgNS = 'http://www.w3.org/2000/svg';
 let lastState = null;
 let limitFocused = false;
 let toastTimer = null;
+let selectedJourney = null;
+let knownJourneyCount = -1;
 
 function svgElement(name, attrs = {}, content = null) {
   const el = document.createElementNS(svgNS, name);
@@ -43,13 +45,13 @@ function drawGauge(speed) {
     }
   }
 }
-function drawChart(history, limit) {
+function drawChart(history, limit, paused = false) {
   const W = 740, H = 248, L = 40, R = 13, T = 15, B = 20;
   const bottom = H - B, right = W - R;
   const maxValue = Math.max(70, limit * 1.2, ...history.map(v => v.speed || 0));
   const yMax = Math.ceil(maxValue / 20) * 20;
   const y = v => bottom - v / yMax * (bottom - T);
-  const newest = Date.now() / 1000;
+  const newest = paused && history.length ? history[history.length - 1].t : Date.now() / 1000;
   const x = t => L + Math.min(1, Math.max(0, 1 - (newest - t) / 30)) * (right - L);
   const grid = $('chartGrid'), labels = $('chartLabels');
   grid.replaceChildren(); labels.replaceChildren();
@@ -130,7 +132,13 @@ function render(state) {
   $('gaugeStatus').textContent = state.speed_kmh > 0 ? (state.overspeed_now ? 'SPEED LIMIT EXCEEDED' : 'VEHICLE MOVING') : 'VEHICLE STOPPED';
   if (!limitFocused) $('speedLimitInput').value = state.limit_kmh;
   drawGauge(state.speed_kmh);
-  drawChart(state.history, state.limit_kmh);
+  const paused = !state.running && !state.feed_active;
+  const preservedHistory = (state.history && state.history.length) ? state.history :
+    (state.latest_event?.samples || []).map(p => ({t:p.t, speed:p.speed_kmh}));
+  drawChart(preservedHistory, state.limit_kmh, paused);
+  $('historyDescription').textContent = (paused ? 'Last captured 30 seconds' : 'Live 30-second window') +
+      ' · ' + (hardware ? 'USB sensor data' : replay ? 'offline replay' : 'simulation');
+  renderTft(state);
   const event = state.latest_event;
   if (event && event.event_type === 'STOP') {
     $('emptyEvidence').hidden = true; $('evidenceDetails').hidden = false;
@@ -187,6 +195,99 @@ async function loadEvents() {
     }
   } catch(error) {toast('Unable to load event records',true);}
 }
+
+function renderTft(state) {
+  $('tftSpeed').textContent = number(state.speed_kmh);
+  $('tftPeak').textContent = number(Math.max(state.peak_recent_kmh || 0, state.latest_event?.maximum_recent_speed_kmh || 0)) + ' km/h';
+  $('tftLimit').textContent = number(state.limit_kmh) + ' km/h';
+  $('tftStop').textContent = state.latest_event ? number(state.latest_event.speed_before_stop_kmh) + ' km/h' : '—';
+  $('tftMotion').textContent = state.speed_kmh > .5 ? 'MOVING' : 'STATIONARY';
+  $('tftRecording').textContent = state.journey_recording ? '● ACTIVE' : 'STANDBY';
+  $('rideRecordingBadge').textContent = state.journey_recording ? '● LOGGING RIDE' : '● STANDBY';
+  const red = state.overspeed_now || state.overspeed_recent;
+  $('tftWarning').textContent = red ? '⚠ OVERSPEED EVENT · DEMO INPUT' : 'READY · DEMO / SENSOR INPUT';
+  $('tftWarning').classList.toggle('danger',red);
+}
+function friendlyDuration(seconds) {
+  const s = Math.max(0,Math.round(seconds || 0));
+  return Math.floor(s/3600) ? `${Math.floor(s/3600)}h ${Math.floor(s%3600/60)}m` : `${Math.floor(s/60)}m ${s%60}s`;
+}
+function drawJourneyGraph(points, limit=50, duration=0) {
+  const line=$('journeyLine'), fill=$('journeyFill');
+  if (!points?.length) {line.setAttribute('d','');fill.setAttribute('d','');return;}
+  const W=546,left=42,top=13,base=159, maxSpeed=Math.max(60,limit*1.2,...points.map(v=>v.speed));
+  const maxY=Math.ceil(maxSpeed/20)*20, maxT=Math.max(1,duration);
+  const x = v=> left + W*Math.max(0,Math.min(1,v.t/maxT));
+  const y = v=> base - (base-top)*Math.max(0,Math.min(1,v/maxY));
+  const path=points.map((v,i)=>`${i?'L':'M'} ${x(v).toFixed(1)} ${y(v.speed).toFixed(1)}`).join(' ');
+  line.setAttribute('d',path);
+  fill.setAttribute('d',path+` L ${x(points[points.length-1])} ${base} L ${x(points[0])} ${base} Z`);
+  const limitY=y(limit); $('journeyLimit').setAttribute('y1',limitY);$('journeyLimit').setAttribute('y2',limitY);
+  $('journeyYTop').textContent=Math.round(maxY)+' km/h';
+  $('journeyXEnd').textContent='Ride duration '+friendlyDuration(duration);
+}
+async function showJourney(id) {
+  selectedJourney=id || null;
+  if (!id) {drawJourneyGraph([]);return;}
+  try {
+    const response=await fetch('/api/journey/'+encodeURIComponent(id),{cache:'no-store'});
+    if (!response.ok) throw new Error('Journey detail unavailable');
+    const data=await response.json(), s=data.summary;
+    $('ridePeak').textContent=number(s.peak_kmh)+' km/h';
+    $('rideDuration').textContent=friendlyDuration(s.duration_seconds);
+    $('rideDistance').textContent=number(s.distance_km_estimate)+' km';
+    $('rideIntegrity').textContent=s.verification==='VERIFIED_LOCAL'?'✓ Local HMAC':s.verification==='UNVERIFIED_IMPORT'?'Unverified import':s.verification==='RECORDING'?'Recording':'Check failed';
+    $('downloadJourney').hidden=false;
+    $('downloadJourney').href='/api/journey/'+encodeURIComponent(id)+'.csv';
+    drawJourneyGraph(data.samples,s.limit_kmh,s.duration_seconds);
+  } catch(err) {toast(err.message,true);}
+}
+async function loadJourneys(force=false) {
+  try {
+    const response=await fetch('/api/journeys',{cache:'no-store'});
+    if(!response.ok)throw new Error('Unable to read journeys');
+    const items=await response.json();
+    const select=$('journeySelect');
+    const ids=items.map(v=>v.id).join(',');
+    if (force || select.dataset.ids!==ids) {
+      const retain=selectedJourney;
+      select.replaceChildren();
+      if (!items.length) {
+        const option=document.createElement('option');option.value='';option.textContent='No journeys yet';select.appendChild(option);
+        $('downloadJourney').hidden=true;
+        $('ridePeak').textContent=$('rideDuration').textContent=$('rideDistance').textContent=$('rideIntegrity').textContent='—';
+        drawJourneyGraph([]);
+        selectedJourney=null;
+      } else {
+        for(const item of items) {
+          const option=document.createElement('option');option.value=item.id;
+          option.textContent=dateLabel(item.start_utc)+' · '+number(item.peak_kmh)+' km/h · '+(item.origin==='MICROSD_IMPORT'?'microSD':item.status==='RECORDING'?'Recording':'PC');
+          select.appendChild(option);
+        }
+        const picked=items.some(x=>x.id===retain)?retain:items[0].id;
+        select.value=picked;
+        await showJourney(picked);
+      }
+      select.dataset.ids=ids;
+    } else if (selectedJourney) {
+      await showJourney(selectedJourney);
+    }
+  } catch(err) {toast('Journey records unavailable',true);}
+}
+async function sendCsv(url, file=null) {
+  try {
+    if (file && file.size>8*1024*1024)throw new Error('CSV must be smaller than 8 MB');
+    const headers={'X-DriveTrace-Client':'dashboard'};
+    if(file)headers['Content-Type']='text/csv';
+    const result=await fetch(url,{method:'POST',headers,body:file||null});
+    const body=await result.json();
+    if(!result.ok || !body.ok)throw new Error(body.error||'Import failed');
+    toast('Journey imported. External SD card files remain unverified.');
+    selectedJourney=body.journey.id;
+    await loadJourneys(true);
+  } catch(err) {toast(err.message,true);}
+}
+
 function init() {
   document.querySelectorAll('button[data-action]').forEach(button => button.addEventListener('click',() => action(button.dataset.action)));
   $('speedLimitInput').addEventListener('focus',() => {limitFocused=true;});
@@ -199,11 +300,19 @@ function init() {
   });
   $('verifyLatest').addEventListener('click',()=>action('verify_latest'));
   $('refreshEvents').addEventListener('click',()=>loadEvents());
+  $('teacherDemo').addEventListener('click',()=>sendCsv('/api/journeys/demo'));
+  $('importMicroSD').addEventListener('click',()=>{
+    const file=$('sdCsvFile').files?.[0];
+    if(!file){toast('Choose a microSD CSV file first',true);return;}
+    sendCsv('/api/journeys/import',file);
+  });
+  $('journeySelect').addEventListener('change',e=>showJourney(e.target.value));
   document.querySelectorAll('.nav-link').forEach(a => a.addEventListener('click',()=>{
     document.querySelectorAll('.nav-link').forEach(link=>link.classList.toggle('active',link===a));
   }));
-  loadState();loadEvents();
+  loadState();loadEvents();loadJourneys();
   setInterval(loadState,500);
   setInterval(loadEvents,3500);
+  setInterval(loadJourneys,3000);
 }
 document.addEventListener('DOMContentLoaded',init);

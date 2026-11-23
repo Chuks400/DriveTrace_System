@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f5f7fb">
-  <meta name="description" content="DriveTrace embedded systems project, Phase 3 simulated and offline-replayed vehicle speed history and tamper-evident events.">
+  <meta name="description" content="DriveTrace embedded systems project, Phase 4 whole-journey logs, TFT preview, and offline microSD import and tamper-evident events.">
   <title>DriveTrace | Live Telemetry Dashboard</title>
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/style.css">
@@ -22,18 +22,20 @@
         <a href="#overview" class="nav-link active"><span class="nav-ico">▦</span> Overview <span class="nav-dot"></span></a>
         <a href="#telemetry" class="nav-link"><span class="nav-ico">⌁</span> Live telemetry</a>
         <a href="#events" class="nav-link"><span class="nav-ico">▤</span> Event history</a>
+        <a href="#journeys" class="nav-link"><span class="nav-ico">▥</span> Ride history</a>
+        <a href="#tft" class="nav-link"><span class="nav-ico">▣</span> On-bike display</a>
         <a href="#hardware" class="nav-link"><span class="nav-ico">◇</span> Hardware status</a>
       </nav>
       <div class="sidebar-bottom">
         <div class="phase-box">
-          <div class="phase-icon">03</div>
-          <div class="phase-header">Phase 3 / 6</div>
-          <div class="phase-title">Hardware integration</div>
-          <div class="phase-detail">Simulation + USB telemetry + offline replay.</div>
+          <div class="phase-icon">04</div>
+          <div class="phase-header">Phase 4 / 6</div>
+          <div class="phase-title">Journey & display software</div>
+          <div class="phase-detail">Whole journeys + TFT preview + microSD import.</div>
           <div class="progress-track"><div class="progress-fill"></div></div>
           <span class="phase-foot">Development in progress</span>
         </div>
-        <p class="side-copy">DriveTrace v1.3<br>Local development build</p>
+        <p class="side-copy">DriveTrace v1.4<br>Local development build</p>
       </div>
     </aside>
 
@@ -52,9 +54,9 @@
           <div>
             <div class="eyebrow">DRIVETRACE / SYSTEM MONITOR</div>
             <h1>Vehicle telemetry <span class="heading-accent">overview<span class="dot-blue">.</span></span></h1>
-            <p>Live speed analysis, pre-stop evidence, and an optional ESP32 sensor feed.</p>
+            <p>Live vehicle telemetry, complete riding history, an on-bike display preview, and microSD import.</p>
           </div>
-          <div class="build-tag"><span class="build-dot"></span> Phase 3: Sensor integration</div>
+          <div class="build-tag"><span class="build-dot"></span> Phase 4: Journey recording & TFT preview</div>
         </section>
 
         <div class="notice" id="modeNotice" role="status"><span class="notice-icon">ⓘ</span> <span id="modeNoticeText"><strong>Simulation environment.</strong> All readings are generated on your computer. No ESP32, GPS, or motion sensors are connected.</span><span class="notice-end" id="modeNoticeEnd">NO HARDWARE NEEDED</span></div>
@@ -149,6 +151,59 @@
           <div class="table-scroller"><table class="event-table"><thead><tr><th>EVENT TYPE</th><th>TIMESTAMP</th><th>SPEED BEFORE STOP</th><th>PEAK SPEED</th><th>INTEGRITY</th><th>FILE</th></tr></thead><tbody id="eventRows"><tr><td class="empty-row" colspan="6">No recorded events. Run the automatic demonstration to create one.</td></tr></tbody></table></div>
         </section>
 
+
+        <section class="demo-banner" aria-label="Teacher demonstration">
+          <div><span class="eyebrow">TEACHER DEMO · NO HARDWARE REQUIRED</span>
+          <h2>From simulated riding to a complete journey report.</h2>
+          <p>Run the 14-second drive, or load a two-minute example ride as if it came from the microSD card. Select any journey to inspect its full-speed graph.</p></div>
+          <button class="button button-primary" id="teacherDemo" type="button">▶ Load sample ride</button>
+        </section>
+        <section class="phase4-layout" aria-label="Standalone system demonstrations">
+          <article class="panel tft-panel" id="tft">
+            <div class="panel-header"><div><h2>On-bike TFT screen preview</h2><p>Illustrative ILI9341 2.4-inch layout · currently rendered in browser</p></div><span class="mini-pill">UI PREVIEW</span></div>
+            <div class="device-shell">
+              <div class="device-header"><strong>DriveTrace</strong><span>● DEMO &nbsp; ▣ SD</span></div>
+              <div class="device-speed"><strong id="tftSpeed">0.0</strong><span>km/h</span></div>
+              <div class="device-speed-label" id="tftMotion">STATIONARY</div>
+              <div class="device-stats">
+                <div><span>PEAK SPEED</span><strong id="tftPeak">0.0 km/h</strong></div>
+                <div><span>SPEED LIMIT</span><strong id="tftLimit">50.0 km/h</strong></div>
+                <div><span>LAST PRE-STOP</span><strong id="tftStop">—</strong></div>
+                <div><span>RECORDING</span><strong id="tftRecording">STANDBY</strong></div>
+              </div>
+              <div class="device-footer" id="tftWarning">READY · SIMULATED INPUT</div>
+            </div>
+            <p class="feature-footnote">The physical TFT will not work until the ESP32-S3 firmware, screen wiring, RTC, and SD card are assembled and tested. This preview demonstrates the proposed display layout.</p>
+          </article>
+          <article class="panel journey-panel" id="journeys">
+            <div class="panel-header"><div><h2>Complete journey history</h2><p>Save a whole ride, not only the final 30 seconds</p></div><span class="mini-pill" id="rideRecordingBadge">● STANDBY</span></div>
+            <div class="journey-import">
+              <label for="sdCsvFile" class="input-file-label">Import recorded microSD CSV</label>
+              <input id="sdCsvFile" type="file" accept=".csv,text/csv" aria-label="Choose microSD ride CSV file">
+              <button class="button button-outline" id="importMicroSD" type="button">Import CSV</button>
+            </div>
+            <p class="feature-footnote">Imported files are labelled UNVERIFIED until device-side authenticity checks are implemented. The example file is available in samples/teacher_ride_sdcard.csv.</p>
+            <div class="ride-selection"><label for="journeySelect">SAVED JOURNEY</label>
+              <select id="journeySelect" aria-label="Select saved journey"><option value="">No journeys yet</option></select>
+              <a id="downloadJourney" class="button button-outline" href="#" download hidden>↓ Export CSV</a>
+            </div>
+            <div class="ride-metrics">
+              <div><span>PEAK</span><strong id="ridePeak">—</strong></div>
+              <div><span>DURATION</span><strong id="rideDuration">—</strong></div>
+              <div><span>DISTANCE*</span><strong id="rideDistance">—</strong></div>
+              <div><span>INTEGRITY</span><strong id="rideIntegrity">—</strong></div>
+            </div>
+            <div class="ride-chart-wrapper"><svg id="journeyChart" viewBox="0 0 600 196" preserveAspectRatio="none" role="img" aria-label="Complete ride speed history chart">
+              <line x1="42" y1="159" x2="588" y2="159" stroke="#d7e2f2" />
+              <path id="journeyFill" fill="#eaf1ff" d=""/><path id="journeyLine" fill="none" stroke="#2c65ec" stroke-width="3.2" d=""/>
+              <line id="journeyLimit" x1="42" y1="100" x2="588" y2="100" stroke="#efae55" stroke-dasharray="7 7" stroke-width="1.5"/>
+              <text id="journeyYTop" x="4" y="19" fill="#8898b0" font-size="12">80</text>
+              <text id="journeyXEnd" x="588" y="185" text-anchor="end" fill="#8898b0" font-size="12">Full journey</text>
+            </svg></div>
+            <p class="feature-footnote">*Distance is calculated from sampled speed and time, not a calibrated odometer. Import and local HMAC do not certify road-use evidence.</p>
+          </article>
+        </section>
+
         <section class="panel sensor-panel" id="sensor-monitor" aria-label="Sensor feed diagnostics">
           <div class="panel-header"><div><h2>Sensor feed diagnostics</h2><p>Physical status is separate from replayed data. GPS agreement is only a preliminary check.</p></div><span class="mini-pill" id="feedStatusBadge">SIMULATION</span></div>
           <div class="sensor-stats">
@@ -162,10 +217,10 @@
           <p class="sensor-tip" id="hardwareMessage">No real sensors connected. Run the offline replay to check the data pipeline without hardware.</p>
         </section>
         <section class="hardware-panel" id="hardware">
-          <div class="hardware-copy"><div class="eyebrow">PHASE 3 · HARDWARE READY</div><h2>Ready for real hardware when you are.</h2><p>The serial pipeline and offline replay are prepared. Physical validation is pending; microSD, RTC, TFT and enclosure integration remain later stages.</p><div class="hardware-status-row"><span>◌ Hall: awaiting device</span><span>◌ IMU: awaiting device</span><span>◌ GPS: awaiting device</span></div></div>
+          <div class="hardware-copy"><div class="eyebrow">PHASE 4 · SOFTWARE DEMONSTRATION READY</div><h2>Ready for real hardware when you are.</h2><p>Simulation, offline sensor replay, journey CSV logging, file import and TFT screen preview are prepared. Firmware is provided as a bench prototype; physical wiring and calibration are still pending.</p><div class="hardware-status-row"><span>◌ Hall: awaiting device</span><span>◌ IMU: awaiting device</span><span>◌ GPS: awaiting device</span></div></div>
           <div class="hardware-illustration" aria-hidden="true"><div class="chip-shape"><span>ESP32-S3</span><i></i><i></i><i></i></div><div class="chip-orbit orbit-a"></div><div class="chip-orbit orbit-b"></div><div class="chip-orbit orbit-c"></div></div>
         </section>
-        <footer class="footer"><span>© DriveTrace · Embedded Systems Final Project</span><span>Phase 3 / Prototype · Not certified vehicle evidence</span></footer>
+        <footer class="footer"><span>© DriveTrace · Embedded Systems Final Project</span><span>Phase 4 / Prototype · Not certified vehicle evidence</span></footer>
       </main>
     </div>
   </div>

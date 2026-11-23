@@ -1,4 +1,4 @@
-"""DriveTrace Phase 3 — local dashboard, simulator, replay and optional USB sensors.
+"""DriveTrace Phase 4 — dashboard, full journeys, replay, microSD import, USB.
 
 Standard-library Python backend. Launch via: py main.py
 No hardware, framework, database or network connection is required.
@@ -18,6 +18,7 @@ from urllib.parse import unquote, urlsplit
 import webbrowser
 
 from drivetrace_core import DriveTraceRecorder
+from journey_store import JourneyStore, MAX_CSV_BYTES
 
 ROOT = Path(__file__).resolve().parent
 STATIC = ROOT / "static"
@@ -37,6 +38,7 @@ class SimulationEngine:
     def __init__(self, data_dir: Path | str | None = None):
         self.lock = threading.RLock()
         self.recorder = DriveTraceRecorder(data_dir or ROOT / "data")
+        self.journeys = JourneyStore(self.recorder.data_dir / "journeys", self.recorder.key)
         self.speed = 0.0
         self.running = False
         self.demo_started: float | None = None
@@ -84,6 +86,8 @@ class SimulationEngine:
             self._worker.start()
 
     def shutdown(self):
+        with self.lock:
+            self.journeys.finish()
         self._stop.set()
         if self._worker is not None:
             self._worker.join(timeout=1.0)
@@ -109,10 +113,17 @@ class SimulationEngine:
                 self.demo_started = None
                 self.message = "Auto-drive complete. Pre-stop evidence saved."
         if self.running or self.recorder.has_moved_since_stop:
-            event = self.recorder.add_sample(self.speed, time.time())
-            self._remember(event)
+            self._add_speed_sample(self.speed, timestamp=time.time())
             if event is not None:
                 self.message = "Stop event preserved and signed with the local demo key."
+
+    def _add_speed_sample(self, speed: float, timestamp=None, source="SIMULATED", sensor=None):
+        stamp = time.time() if timestamp is None else timestamp
+        event = self.recorder.add_sample(speed, timestamp=stamp, source=source)
+        self.journeys.record(speed, timestamp=stamp, source=source, sensor=sensor,
+                             limit=self.recorder.speed_limit_kmh)
+        self._remember(event)
+        return event
 
     def action(self, name: str, value=None) -> dict:
         with self.lock:
@@ -127,12 +138,12 @@ class SimulationEngine:
                 self.running = True
                 self.demo_started = None
                 self.speed = min(160.0, self.speed + 10.0)
-                self._remember(self.recorder.add_sample(self.speed))
+                self._add_speed_sample(self.speed)
                 self.message = f"Accelerating — {self.speed:.0f} km/h."
             elif name == "brake":
                 self.demo_started = None
                 self.speed = max(0.0, self.speed - 10.0)
-                self._remember(self.recorder.add_sample(self.speed))
+                self._add_speed_sample(self.speed)
                 if self.speed == 0.0:
                     self.running = False
                 self.message = f"Braking — {self.speed:.0f} km/h."
@@ -140,7 +151,7 @@ class SimulationEngine:
                 self.demo_started = None
                 self.speed = 0.0
                 self.running = False
-                self._remember(self.recorder.add_sample(0.0))
+                self._add_speed_sample(0.0)
                 self.message = "Vehicle stopped. A stop event was saved if movement occurred."
             elif name == "demo":
                 self.speed = 0.0
@@ -270,8 +281,7 @@ class SimulationEngine:
             self.sensor_consistency = consistency
             self.speed = speed
             self.running = speed > self.recorder.stop_threshold_kmh
-            event = self.recorder.add_sample(speed, source=source)
-            self._remember(event)
+            event = self._add_speed_sample(speed, source=source, sensor=self.sensor_snapshot)
             self.message = ("Stop event recorded from " + source.lower() + " data."
                             if event else "Receiving " + source.lower() + " telemetry.")
             return {"ok": True, "speed_kmh": round(speed, 2), "source": source,
@@ -313,7 +323,9 @@ class SimulationEngine:
                                          self.recorder.verify_file(self.latest_stop_path)),
                 "message": self.message,
                 "uptime_seconds": round(time.time() - self.started_at),
-                "version": "1.0.0",
+                "version": "1.4.0",
+                "journey_recording": self.journeys.active_id is not None,
+                "active_journey_id": self.journeys.active_id,
             }
 
 
@@ -345,6 +357,23 @@ class DriveTraceHandler(BaseHTTPRequestHandler):
             return self._json(200, self.engine.state())
         if path == "/api/events":
             return self._json(200, self.engine.events())
+        if path == "/api/journeys":
+            with self.engine.lock:
+                return self._json(200, self.engine.journeys.list())
+        if path.startswith("/api/journey/"):
+            try:
+                name = unquote(path.removeprefix("/api/journey/"))
+                want_csv = name.endswith(".csv")
+                if want_csv:
+                    name = name[:-4]
+                with self.engine.lock:
+                    if want_csv:
+                        source = self.engine.journeys.csv_path(name)
+                        return self._send(200, source.read_bytes(), "text/csv; charset=utf-8",
+                                          {"Content-Disposition": f'attachment; filename="{name}.csv"'})
+                    return self._json(200, self.engine.journeys.detail(name))
+            except (ValueError, FileNotFoundError, OSError, KeyError):
+                return self._json(404, {"ok": False, "error": "Journey not found"})
         if path == "/api/health":
             return self._json(200, {"ok": True, "mode": self.engine.state()["mode"]})
         if path.startswith("/api/event/"):
@@ -371,12 +400,31 @@ class DriveTraceHandler(BaseHTTPRequestHandler):
             # USB SerialBridge feeds the recorder in-process. Unauthenticated
             # HTTP posts must never be accepted as trusted vehicle telemetry.
             return self._json(403, {"ok": False, "error": "HTTP telemetry disabled; use serial input"})
-        if route != "/api/action":
+        if route not in {"/api/action", "/api/journeys/import", "/api/journeys/demo"}:
             return self._json(404, {"ok": False, "error": "Not found"})
         # The server binds to loopback only; require JSON and an explicit custom header.
         if self.headers.get("X-DriveTrace-Client") != "dashboard":
             return self._json(403, {"ok": False, "error": "Dashboard header required"})
-        if self.headers.get("Content-Type", "").split(";")[0].strip() != "application/json":
+        content_type = self.headers.get("Content-Type", "").split(";")[0].strip()
+        if route == "/api/journeys/import":
+            if content_type != "text/csv":
+                return self._json(415, {"ok": False, "error": "CSV content type required"})
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                if length < 1 or length > MAX_CSV_BYTES:
+                    raise ValueError("CSV must be 1 byte to 8 MB")
+                raw = self.rfile.read(length)
+                with self.engine.lock:
+                    result = self.engine.journeys.import_csv(raw, self.engine.recorder.speed_limit_kmh)
+                return self._json(200, {"ok": True, "journey": result})
+            except (ValueError, UnicodeDecodeError, OSError, TypeError) as exc:
+                return self._json(400, {"ok": False, "error": str(exc)})
+        if route == "/api/journeys/demo":
+            with self.engine.lock:
+                raw = (ROOT / "samples" / "teacher_ride_sdcard.csv").read_bytes()
+                result = self.engine.journeys.import_csv(raw, self.engine.recorder.speed_limit_kmh)
+            return self._json(200, {"ok": True, "journey": result})
+        if content_type != "application/json":
             return self._json(415, {"ok": False, "error": "JSON content type required"})
         try:
             length = int(self.headers.get("Content-Length", "0"))

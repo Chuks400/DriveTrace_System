@@ -1,108 +1,94 @@
-# DriveTrace — Embedded Speed Evidence System
+# DriveTrace — Phase 4 teacher demonstration
 
-**Phase 3: Dashboard + simulation + offline telemetry replay + ESP32-S3 firmware starter. No hardware required for the current test.**
+**A complete demonstration of journey logging, pre-stop event evidence, an onboard TFT display preview, and an offline microSD-to-PC workflow.** The software works **without hardware**. The real ESP32-S3 firmware is an uncompiled example and must be bench-tested and calibrated after the teacher supplies components.
 
-DriveTrace is a multi-sensor, tamper-evident speed history and pre-stop event recorder. The final ESP32-S3 device will use wheel pulses, IMU movement checks, GPS verification, and a TFT display. The present milestone preserves the tested simulation and adds a separate offline replay path for testing the hardware packet protocol. Real sensor accuracy remains untested.
+## Run today — Windows
 
-## Quick start on Windows
+1. Stop the earlier DriveTrace instance in PowerShell using **Ctrl+C** (port 8765 must be free).
+2. Extract the new ZIP into `E:\Downloads\all embedded\FINAL PROJECT` without overwriting the old Phase 3 folder.
+3. Open PowerShell in `DriveTrace_System_Phase4`.
+4. Run `py main.py` — **do not double-click any `.cmd` file** (Windows Smart App Control may block it).
+5. Visit `http://127.0.0.1:8765` and keep PowerShell open.
 
-1. Install [Python 3.10+](https://www.python.org/downloads/) if needed; enable **Add Python to PATH**.
-2. Extract `DriveTrace_System_Phase3.zip` into `E:\Downloads\all embedded\FINAL PROJECT`. The ZIP creates its own `DriveTrace_System_Phase3` folder, so your old folder is not overwritten. Do not run blocked `.cmd` scripts; use PowerShell as shown below.
-3. Open PowerShell **in** the `DriveTrace_System_Phase3` folder.
-4. Run:
+No pip packages, internet, database, cloud accounts, or hardware are required for the main demonstration.
 
-   ```powershell
-   py main.py
-   ```
+## Teacher demo — 3 minutes
 
-5. A browser should open at **http://127.0.0.1:8765**. Keep the PowerShell terminal open while using the dashboard. Press Ctrl+C to stop it.
+1. Show the **Phase 4** dashboard and explain the system distinguishes simulated data from real sensor data.
+2. Click **Run automatic demonstration**. Wait for acceleration, 70 km/h peak speed, overspeed at the 50 km/h configurable threshold, braking, and the saved STOP event.
+3. Point to **Latest stop evidence** and **Event history**. A saved STOP event has a local demo HMAC-SHA256 integrity check.
+4. Scroll to **On-bike TFT screen preview**. The current speed, last pre-stop speed, peak speed, speed limit, and logging status are designed for a small onboard display. This on-PC preview is not a connected screen.
+5. Scroll to **Complete journey history**. Select the newly saved `PC` journey. Show the speed graph, duration, estimated distance, peak speed, and **Export CSV**.
+6. Click **Load sample ride** to demonstrate importing a *fictional* 2-minute-30-second ride from a microSD-compatible CSV. It will appear as **Unverified import** — deliberately not presented as verified real-world speed evidence.
+7. For a separate hardware-data integration demonstration, stop the app and run `py main.py --replay-hardware`. This labels the input **OFFLINE REPLAY** and shows synthetic Hall, IMU, and GPS values in **Sensor feed diagnostics**.
 
-No `pip install`, cloud account, Node, database or internet access is required for simulation or replay. Stop the old Phase 2 server first to free port 8765.
+## What is implemented
 
-## First test — simulation
+| Capability | Implementation | Validation |
+|---|---|---|
+| Live speed dashboard | Browser UI with speed gauge and limits | Python + browser UI smoke tests |
+| Pre-stop event recorder | Rolling 30 seconds, peak, timestamp, overspeed | Automated tests |
+| Whole-journey recording | PC writes one CSV per ride to `data/journeys/`, even if the ride is long | Automated tests |
+| History over time | Select journeys for a full ride chart, duration, approximate distance, speed statistics | Browser UI smoke tests |
+| External microSD import | Import UTF-8 CSV in the documented format, validate, display and export | Automated tests |
+| 2.4-inch TFT mock-up | Live browser preview designed for ILI9341 display | Browser UI smoke tests |
+| Offline sensor replay | Synthetic Hall/IMU/GPS JSON packets fed through the receiver | Automated tests |
+| USB hardware listener | Optional `--serial-port COMx` | Not tested with a physical ESP32 |
+| Standalone ESP32 TFT + microSD sketch | Example `.ino` code to read sensors and log SD records | **NOT** compiled or physically tested |
+| Cryptographic event integrity | Local HMAC-SHA256 on PC event and completed PC-ride summaries | Automated tests; demo only |
 
-- Press **Run automatic demonstration**. In about 14 seconds, the simulated vehicle accelerates to **70 km/h**, cruises, brakes and stops. With the default 50 km/h threshold, a stop event will be stored and marked overspeed.
-- Or press **Start → Accelerate +10** multiple times → **Brake −10** → **Stop vehicle**.
-- Observe the **Current speed**, **Speed before stop**, **Peak speed**, **Rolling 30-second graph**, and **Latest stop evidence**.
-- Press **Verify latest event integrity** to check the saved HMAC-SHA256.
-- In **Recorded events**, use **↓ JSON** to export a record.
-- Press **Simulate tamper** to generate a simulated enclosure-opening event. This is not a physical sensor.
-- Press **Reset live readings** to clear only the live samples; saved events remain.
+### Important scope distinction
 
-### Simulate a tamper event
+**A PC with this package can log a full journey only while receiving simulated or real USB-fed speed samples.** Independent e-bike operation requires the teacher-supplied ESP32-S3, powered TFT, SD module, Hall wheel sensor, RTC, GPS and IMU to be wired, flashed, and tested. The included standalone firmware sketch is a starting implementation for that later physical phase.
 
-On Windows PowerShell (while dashboard is running):
+The onboard display currently **does not exist as tested physical hardware**. The TFT preview is functional as an on-PC view. The standalone firmware code has not been physically run. Do not claim production readiness or evidentiary accuracy.
 
-```powershell
-Invoke-RestMethod -Uri http://127.0.0.1:8765/api/action -Method Post -ContentType application/json -Headers @{'X-DriveTrace-Client'='dashboard'} -Body '{"action":"tamper"}'
+## Import from microSD
+
+The dashboard accepts CSV files with headers:
+
+```csv
+timestamp_utc,speed_kmh,source,gps_speed_kmh,wheel_pulses,imu_ax_g,imu_ay_g,imu_az_g
+2026-11-23T10:30:00+00:00,12.50,HARDWARE,12.20,5,0.02,0.00,0.98
+2026-11-23T10:30:01+00:00,13.20,HARDWARE,13.10,6,0.03,0.00,0.98
 ```
 
-## Offline hardware-packet replay (new in Phase 3)
+- Required fields: `timestamp_utc` (timezone-aware ISO 8601), `speed_kmh` (non-negative km/h).
+- Other columns are optional, but the standalone firmware writes them when available.
+- Import limit: **8 MB, 200,000 records**; time must be chronological.
+- Imported data is stored in `data/journeys/` and labelled **UNVERIFIED_IMPORT**, not signed as trustworthy sensor data.
+- A prebuilt fictional example is available at `samples/teacher_ride_sdcard.csv`. Click **Load sample ride** to demonstrate importing without locating the file manually.
+- Local PC-generated records have a demo HMAC. It is not equivalent to device-side cryptographic signing, secure key hardware or a forensic-grade log.
 
-With the Phase 2 server stopped, run `py main.py --replay-hardware`. The dashboard will show **OFFLINE REPLAY** and use test packets from `samples/hardware_replay.jsonl`. This runs without an ESP32 and creates a signed stop record with source `REPLAY`. See [docs/PHASE3_TESTING.md](docs/PHASE3_TESTING.md) for the full test sequence.
+## Physical firmware and wiring
 
-## Files
+Two separate sketches are provided:
 
-| Path | What it does |
-|---|---|
-| `main.py` | Local HTTP server, simulated vehicle controller and REST API |
-| `drivetrace_core.py` | Hardware-independent rolling speed recorder and HMAC integrity |
-| `static/index.html` | Responsive dashboard layout |
-| `static/style.css` | Light-mode dashboard styling |
-| `static/app.js` | Live graph, speed gauge, controls, record table and downloads |
-| `tests/` | Automated Python tests |
-| `verify_event.py` | Command-line verification of exported JSON |
-| `hardware/drivetrace_esp32s3.ino` | First ESP32-S3 Hall + MPU6050 bench firmware |
-| `docs/HARDWARE_INTEGRATION.md` | Wiring checks, serial protocol and bench validation |
-| `requirements-hardware.txt` | Optional USB serial dependency (pyserial) |
-| `samples/hardware_replay.jsonl` | Synthetic Hall, IMU and GPS packet sequence |
-| `docs/PHASE3_TESTING.md` | Replay and future bench testing steps |
-| `docs/WIRING_PHASE3.md` and `.svg` | Example board wiring and safety checks |
-| `HARDWARE_PURCHASE_LIST.md` | Components, quantities, buying order and cautions |
-| `DriveTrace_Proposal.pdf` | Final project proposal |
-| `data/events/*.json` | Runtime event records (generated on first run; ignored by Git) |
-| `data/secret.key` | Local HMAC demo key (generated; **never push to GitHub**) |
+- `hardware/drivetrace_esp32s3.ino`: USB serial Hall + IMU + GPS stream for PC dashboard.
+- `hardware/standalone_esp32s3_tft_sd/standalone_esp32s3_tft_sd.ino`: example independent logging to microSD and TFT display, using Hall, MPU6050, GPS, DS3231 RTC, SD, and ILI9341.
 
-## Run automated tests
+Read `docs/PHASE4_HARDWARE_NOTES.md` before wiring. The example pins are provisional and all GPIO must be 3.3 V logic safe. The MPU6050 and DS3231 normally share I²C address **0x68**; the standalone example requires the MPU6050 **AD0 high** to use **0x69**, or otherwise an appropriate address arrangement. **Do not mount the Hall sensor on the rotating wheel**: mount the sensor on the stationary frame and only the magnet on the rotating wheel.
+
+### Build requirements for ESP32 example
+
+Arduino IDE 2.x, Espressif ESP32 core, `Adafruit GFX Library`, `Adafruit ILI9341` for the standalone TFT sketch. `Wire`, `SPI`, and `SD` are from the board core. Firmware was **not compiled on a target ESP32-S3** and should not be treated as tested or ready to mount. RTC must be set to UTC (this sketch will not log if RTC is invalid); wheel circumference must be measured and calibrated, not assumed.
+
+## Tests
 
 ```powershell
 py -m unittest discover -s tests -v
 ```
 
-To verify an exported file *using this installation's local key*:
+**24 tests** presently cover the original event pipeline, Phase 3 replay, CSV generation, import rejection, signed metadata, and web API. Browser UI smoke tests were also performed with mocked API responses because browser networking to localhost is restricted in the authoring environment. Actual backend API tests were performed against a live local HTTP server.
 
-```powershell
-py verify_event.py "data/events/ACTUAL_EVENT_FILENAME.json"
-```
+## Runtime files and backups
 
-## Safety and scope
+- `data/events/`: stop/tamper JSON records.
+- `data/journeys/`: complete CSV journeys + JSON summary metadata.
+- `data/secret.key`: demo HMAC key, **do not commit or share**.
+- Both folders and key are excluded by `.gitignore`.
+- The ZIP has no runtime data. Preserve your Phase 3 folder and records separately.
 
-- **No hardware is connected.** All readings and case-opening events are simulated; results cannot establish a real vehicle's speed.
-- Event files use **HMAC-SHA256** with a locally stored key. This detects modifications when the key is protected. It is not forensic-grade proof if someone can alter both the record and key.
-- Server binds to **127.0.0.1** only, not the public network. Do not expose it to the internet.
-- For actual speed measurement, calibrate the wheel circumference and verify the Hall sensor and module voltage with ESP32-S3 3.3 V logic.
-- The initial USB serial integration scaffold is included. It still requires the exact board pinout to be checked, firmware upload, wheel calibration and physical validation. GPS, SD, RTC, TFT, tamper switch and vehicle power integration remain future work.
+## Source control
 
-## Development milestones
-
-1. ✅ Phase 1: Local dashboard and simulated evidence engine.
-2. ◐ Phase 2: ESP32-S3 + Hall firmware and serial bridge written; board testing pending.
-3. ◐ Phase 3: GPS UART, IMU raw readings, GPS agreement diagnostic, and replay tests written; physical validation pending.
-4. ☐ Phase 4: MicroSD + RTC + storage on ESP32.
-5. ☐ Phase 5: TFT display + tamper switch + hardware integrity design.
-6. ☐ Phase 6: RC vehicle integration, calibration, test report.
-
-## GitHub publishing (new, dedicated repository)
-
-**Do not push this project to the unrelated Cybte or EPISTYN repositories.** Create a new **private** GitHub repository, e.g. `drivetrace-embedded`, and from this folder run:
-
-```powershell
-git init
-git add .
-git commit -m "Build DriveTrace Phase 3 sensor bridge and diagnostics"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/drivetrace-embedded.git
-git push -u origin main
-```
-
-Replace `YOUR_USERNAME` with your GitHub username. The `.gitignore` excludes local runtime data and keys. Do not upload saved evidence or secret keys.
+Use a new, private `drivetrace-embedded` GitHub repository. Never push these files into unrelated Cybte or EPISTYN repositories. No GitHub push has been performed automatically. See `docs/TEACHER_DEMO.md` for speaking notes and `docs/PHASE4_HARDWARE_NOTES.md` for physical assembly.

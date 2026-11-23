@@ -18,3 +18,22 @@
 button:disabled {opacity:.48;cursor:not-allowed;}
 @media(max-width:800px){.sensor-stats{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:470px){.sensor-stats{grid-template-columns:1fr;}}
+
+
+/* Phase 4: teacher demonstration, on-bike screen preview and ride archive. */
+.demo-banner{display:flex;align-items:center;justify-content:space-between;gap:22px;border:1px solid #dbe6fa;background:linear-gradient(113deg,#edf4ff,#f9fbff);border-radius:13px;padding:21px 23px;margin:22px 0}
+.demo-banner h2{font-size:18px;margin:7px 0;color:#21385f}.demo-banner p{font-size:12px;line-height:1.6;color:#7386a4;max-width:700px;margin:0}.demo-banner .button{flex-shrink:0}
+.phase4-layout{display:grid;grid-template-columns:minmax(315px,.83fr) minmax(380px,1.17fr);gap:18px;margin-bottom:24px}
+.device-shell{background:#0e1b34;color:#f6faff;border:8px solid #232b3b;border-radius:21px;padding:19px 19px 15px;max-width:355px;margin:15px auto;box-shadow:0 15px 25px #122f5e1c;min-height:300px}
+.device-header{display:flex;justify-content:space-between;align-items:center;color:#7fc7ff;font-size:17px}.device-header span{font-size:10px;color:#62e1b4;letter-spacing:.7px}
+.device-speed{text-align:center;padding:7px 0 0}.device-speed strong{font-size:66px;letter-spacing:-4px;line-height:1.2;font-variant-numeric:tabular-nums}.device-speed span{font-size:14px;color:#b4c8e9;margin-left:7px}
+.device-speed-label{text-align:center;color:#77c9ff;letter-spacing:2px;font-size:10px;font-weight:800;margin:3px 0 15px}
+.device-stats{display:grid;grid-template-columns:1fr 1fr;gap:9px;border-top:1px solid #34415a;padding-top:15px}.device-stats>div{min-width:0}.device-stats span{display:block;font-size:9px;color:#819fc6;letter-spacing:.4px;margin-bottom:5px}.device-stats strong{display:block;font-size:14px;color:#f8fbff}
+.device-footer{border-top:1px solid #34415a;margin-top:14px;padding-top:12px;text-align:center;color:#55e4b1;font-size:10px;font-weight:850;letter-spacing:1px}.device-footer.danger{color:#ff8186}
+.feature-footnote{font-size:11px!important;color:#8a9ab0!important;line-height:1.6;margin:8px 0}
+.journey-import{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin:16px 0 0}.input-file-label{grid-column:1/-1;color:#687e9e;font-size:11px;font-weight:800;letter-spacing:.5px}.journey-import input{min-width:0;max-width:100%;font-size:11px;border:1px solid #e2eaf6;border-radius:7px;padding:8px;background:#f9fbfe;color:#47607f}
+.ride-selection{display:flex;gap:10px;align-items:center;margin:16px 0}.ride-selection label{font-size:9px;color:#8394af;font-weight:800}.ride-selection select{min-width:0;flex:1;background:#f8faff;border:1px solid #dfe8f5;border-radius:7px;padding:10px 8px;color:#1e3963;font-size:11px}.ride-selection .button{white-space:nowrap}
+.ride-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.ride-metrics>div{background:#f4f8fe;border:1px solid #e5ecf8;border-radius:9px;padding:12px 8px;min-width:0}.ride-metrics span{display:block;font-size:9px;color:#8496b1;font-weight:800;letter-spacing:.5px}.ride-metrics strong{display:block;font-size:13px;color:#193660;margin-top:7px;overflow-wrap:anywhere}
+.ride-chart-wrapper{height:185px;margin-top:18px}.ride-chart-wrapper svg{width:100%;height:100%}
+@media(max-width:1140px){.phase4-layout{grid-template-columns:1fr}}
+@media(max-width:690px){.demo-banner{flex-direction:column;align-items:stretch}.ride-metrics{grid-template-columns:repeat(2,1fr)}.ride-selection{flex-wrap:wrap}.ride-selection select{flex-basis:100%}.journey-import{grid-template-columns:1fr}}
