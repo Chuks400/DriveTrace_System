@@ -1,0 +1,2 @@
+# Install only when connecting the ESP32-S3 over USB serial.
+pyserial>=3.5,<4
