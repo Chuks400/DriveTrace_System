@@ -22,6 +22,9 @@ constexpr int BTN_BRAKE = 17;
 constexpr int BTN_STOP = 16;
 constexpr int BTN_DEMO = 21;
 constexpr int ALERT_LED = 7;
+// Wokwi-only visible wheel rotation indicator; not bicycle propulsion.
+constexpr int STEPPER_STEP = 38;
+constexpr int STEPPER_DIR = 39;
 constexpr int TFT_CS = 10, TFT_DC = 14;
 constexpr int SD_CS = 5;
 constexpr int SPI_SCK = 12, SPI_MISO = 13, SPI_MOSI = 11;
@@ -42,6 +45,10 @@ float imuAx = 0.0f, imuAy = 0.0f, imuAz = 0.0f;
 uint32_t lastScreenMs = 0, lastLogMs = 0, lastSerialMs = 0, demoStartMs = 0;
 uint32_t nextPulseUs = 0, pulseReleaseUs = 0;
 bool pulseLow = false;
+uint32_t nextMotorStepUs = 0, motorStepReleaseUs = 0;
+bool motorStepHigh = false;
+float animatedCarX = 12.0f, animatedWheelPhase = 0.0f;
+uint32_t lastCarAdvanceMs = 0;
 volatile uint32_t lastHallUs = 0, hallPeriodUs = 0, hallPulses = 0;
 bool lastAccel = HIGH, lastBrake = HIGH, lastStop = HIGH, lastDemo = HIGH;
 uint32_t debounceAccel = 0, debounceBrake = 0, debounceStop = 0, debounceDemo = 0;
@@ -99,6 +106,25 @@ void pulseWheelSignal() {
   }
 }
 
+void driveWheelMotor() {
+  // Wokwi A4988 pulses rotate the wheel indicator, not a physical vehicle.
+  uint32_t now = micros();
+  if (motorStepHigh && (int32_t)(now - motorStepReleaseUs) >= 0) {
+    digitalWrite(STEPPER_STEP, LOW);
+    motorStepHigh = false;
+  }
+  if (virtualTargetKmh <= 0) {
+    if (!motorStepHigh) nextMotorStepUs = now;
+    return;
+  }
+  if (!motorStepHigh && (int32_t)(now - nextMotorStepUs) >= 0) {
+    digitalWrite(STEPPER_STEP, HIGH);
+    motorStepHigh = true;
+    motorStepReleaseUs = now + 120;
+    uint32_t periodUs = (uint32_t)(200000.0f / max(1.0f, virtualTargetKmh));
+    nextMotorStepUs = now + max((uint32_t)1800, periodUs);
+  }
+}
 void readWheelSpeed() {
   uint32_t period, last, count;
   noInterrupts();
@@ -238,37 +264,81 @@ void runDemo() {
   }
 }
 
-void drawText(int x, int y, const char *text, uint8_t sz, uint16_t color) {
-  tft.setTextSize(sz);
-  tft.setTextColor(color, ILI9341_NAVY);
+void textOnTFT(int x, int y, const String &value, int size, uint16_t color,
+               uint16_t background = ILI9341_NAVY) {
+  tft.setTextSize(size);
+  tft.setTextColor(color, background);
   tft.setCursor(x, y);
-  tft.print(text);
+  tft.print(value);
+}
+
+void setupTFT() {
+  // Wokwi's ILI9341 board is shown in portrait orientation, 240 x 320.
+  tft.begin();
+  tft.setRotation(0);
+  tft.fillScreen(ILI9341_NAVY);
+  tft.fillRect(0, 0, 240, 28, ILI9341_BLUE);
+  textOnTFT(8, 7, "DriveTrace", 2, ILI9341_WHITE, ILI9341_BLUE);
+  textOnTFT(5, 110, "SIMULATED E-BIKE / CAR", 1, ILI9341_CYAN);
+}
+
+void drawVehicle() {
+  bool driving = measuredKmh > 0.5f;
+  uint32_t nowMs = millis();
+  if (lastCarAdvanceMs == 0) lastCarAdvanceMs = nowMs;
+  uint32_t elapsed = min((uint32_t)1000, nowMs - lastCarAdvanceMs);
+  lastCarAdvanceMs = nowMs;
+  // The TFT car advances only when wheel pulses yield a measured speed.
+  if (driving) {
+    animatedCarX += measuredKmh * elapsed / 1600.0f;
+    if (animatedCarX > 150.0f) animatedCarX = 8.0f;
+    animatedWheelPhase += measuredKmh * elapsed / 2200.0f;
+  }
+  int x = (int)animatedCarX;
+  tft.fillRect(0, 124, 240, 105, ILI9341_NAVY);
+  tft.fillRect(0, 135, 240, 41, ILI9341_CYAN);
+  tft.fillRect(0, 176, 240, 53, ILI9341_DARKGREY);
+  for (int lane = 0; lane < 240; lane += 52) {
+    int lineX = lane - ((int)(animatedCarX * 2) % 52);
+    if (lineX >= 0 && lineX < 240) tft.fillRect(lineX, 211, 26, 3, ILI9341_YELLOW);
+  }
+  // Vehicle body and wheels share the same x offset.
+  tft.fillRoundRect(x, 174, 79, 20, 4, ILI9341_BLUE);
+  tft.fillRoundRect(x + 16, 161, 43, 17, 4, ILI9341_BLUE);
+  tft.fillRect(x + 21, 164, 15, 11, ILI9341_CYAN);
+  tft.fillRect(x + 39, 164, 14, 11, ILI9341_CYAN);
+  tft.fillRect(x + 71, 179, 6, 6, ILI9341_YELLOW);
+  for (int wheel = 0; wheel < 2; ++wheel) {
+    int cx = x + (wheel == 0 ? 18 : 61);
+    int cy = 193;
+    tft.fillCircle(cx, cy, 10, ILI9341_BLACK);
+    tft.fillCircle(cx, cy, 6, ILI9341_WHITE);
+    float a = animatedWheelPhase;
+    int dx = (int)(5.0f * cosf(a));
+    int dy = (int)(5.0f * sinf(a));
+    tft.drawLine(cx - dx, cy - dy, cx + dx, cy + dy, ILI9341_DARKGREY);
+    tft.drawLine(cx + dy, cy - dx, cx - dy, cy + dx, ILI9341_DARKGREY);
+    tft.fillCircle(cx, cy, 2, ILI9341_BLACK);
+  }
+  textOnTFT(6, 220, driving ? "MOVING" : "STOPPED", 1,
+            driving ? ILI9341_GREEN : ILI9341_WHITE, ILI9341_DARKGREY);
 }
 
 void refreshTFT() {
-  // Redraw only 1.5 times per second for responsive simulator performance.
-  tft.fillScreen(ILI9341_NAVY);
-  tft.fillRect(0, 0, 320, 35, ILI9341_BLUE);
-  tft.setTextSize(2); tft.setTextColor(ILI9341_WHITE, ILI9341_BLUE);
-  tft.setCursor(10, 9); tft.print("DriveTrace");
-  drawText(215, 13, sdReady ? "SD OK" : "SD ERR", 1,
-           sdReady ? ILI9341_GREEN : ILI9341_YELLOW);
-  drawText(12, 43, "ESP32-S3  |  WOKWI SIMULATION", 1, ILI9341_CYAN);
-  char b[50];
-  snprintf(b, sizeof(b), "%.1f", measuredKmh);
-  drawText(18, 67, b, 5, ILI9341_WHITE);
-  drawText(235, 101, "km/h", 2, ILI9341_WHITE);
-  snprintf(b, sizeof(b), "PEAK %.1f  LIMIT %.0f", peakKmh, SPEED_LIMIT_KMH);
-  drawText(12, 141, b, 2, ILI9341_WHITE);
-  snprintf(b, sizeof(b), "PRE-STOP %.1f", preStopKmh);
-  drawText(12, 173, b, 2, ILI9341_CYAN);
-  drawText(12, 199, imuReady ? "IMU OK" : "IMU OFF", 1, ILI9341_GREEN);
-  tft.fillRect(0, 216, 320, 24,
-               overspeedSeen ? ILI9341_RED : recording ? ILI9341_DARKGREEN : ILI9341_DARKGREY);
-  tft.setTextSize(2);
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setCursor(9, 220);
-  tft.print(overspeedSeen ? "OVERSPEED EVENT" : recording ? "RECORDING RIDE" : "STANDBY");
+  tft.fillRect(0, 32, 240, 77, ILI9341_NAVY);
+  textOnTFT(9, 39, String(measuredKmh, 1), 4, ILI9341_WHITE);
+  textOnTFT(166, 58, "km/h", 2, ILI9341_WHITE);
+  textOnTFT(7, 91, "LIMIT " + String(SPEED_LIMIT_KMH, 0) + " km/h", 1, ILI9341_YELLOW);
+  drawVehicle();
+  tft.fillRect(0, 232, 240, 52, ILI9341_NAVY);
+  textOnTFT(7, 235, "PEAK " + String(peakKmh, 1) + " km/h", 2, ILI9341_WHITE);
+  textOnTFT(7, 258, "PRE-STOP " + String(preStopKmh, 1), 2, ILI9341_CYAN);
+  uint16_t status = overspeedSeen ? ILI9341_RED :
+                    recording ? ILI9341_DARKGREEN : ILI9341_DARKGREY;
+  tft.fillRect(0, 287, 240, 33, status);
+  textOnTFT(7, 294,
+            overspeedSeen ? "OVER SPEED!" : recording ? "RECORDING" : "STANDBY",
+            2, ILI9341_WHITE, status);
 }
 
 void dumpRide() {
@@ -305,6 +375,8 @@ void setup() {
   pinMode(BTN_STOP, INPUT_PULLUP);
   pinMode(BTN_DEMO, INPUT_PULLUP);
   pinMode(ALERT_LED, OUTPUT);
+  pinMode(STEPPER_STEP, OUTPUT); digitalWrite(STEPPER_STEP, LOW);
+  pinMode(STEPPER_DIR, OUTPUT); digitalWrite(STEPPER_DIR, HIGH);
   Wire.begin(I2C_SDA, I2C_SCL);
   Wire.beginTransmission(MPU_ADDR);
   Wire.write(0x6B); Wire.write(0);
@@ -314,7 +386,7 @@ void setup() {
   SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
   pinMode(TFT_CS, OUTPUT); digitalWrite(TFT_CS, HIGH);
   pinMode(SD_CS, OUTPUT); digitalWrite(SD_CS, HIGH);
-  tft.begin(); tft.setRotation(1);
+  setupTFT();
   sdReady = SD.begin(SD_CS, SPI, 10000000);
   writeHeaderIfNeeded("/RIDE.CSV",
      "timestamp_utc,speed_kmh,source,gps_speed_kmh,wheel_pulses,imu_ax_g,imu_ay_g,imu_az_g");
@@ -324,6 +396,7 @@ void setup() {
   Serial.println("DriveTrace Wokwi ESP32-S3 virtual hardware started");
   Serial.println("ACCEL +10 | BRAKE -10 | STOP | AUTO DEMO buttons on the circuit");
   Serial.println("Wheel GPIO6 -> GPIO4: virtual Hall-compatible magnetic pulses");
+  Serial.println("Wokwi wheel indicator motor: STEP GPIO38, DIR GPIO39");
   Serial.println("Type DUMP to print RIDE.CSV to serial monitor");
   Serial.print("MPU6050="); Serial.print(imuReady ? "YES" : "NO");
   Serial.print(" RTC="); Serial.print(rtcReady ? "YES" : "NO");
@@ -335,6 +408,7 @@ void loop() {
   handleSerial();
   runDemo();
   pulseWheelSignal();
+  driveWheelMotor();
   readWheelSpeed();
   uint32_t now = millis();
   if (now - lastLogMs >= 1000) {

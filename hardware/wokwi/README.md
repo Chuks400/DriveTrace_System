@@ -73,3 +73,13 @@ The MPU6050 reading is sampled separately. It is *not* used to generate the simu
 - **Simulation behaves slowly:** TFT full-screen updates are limited to about 1.5 per second. Wokwi simulation time can run slower than wall time.
 
 The working PC app stays at **http://127.0.0.1:8765** when started locally with \`py main.py\`. Do not replace its source with Wokwi-specific code.
+
+## Visible moving vehicle in Wokwi (development update)
+
+The updated virtual firmware draws a small **moving car on the ILI9341 TFT**, including rolling-wheel spokes, a speed number, the speed threshold, peak, pre-stop speed, and overspeed status. It uses the existing simulated wheel pulses measured by GPIO4. It does not generate a realistic road-driving physics model.
+
+The updated circuit also adds a **Wokwi A4988 + stepper motor** as a visible rotating wheel indicator. GPIO38 sends STEP pulses and GPIO39 sets direction, with the A4988 RESET held high. The indicator is **not** an additional sensor and is **not part of the teacher's hardware purchase list**.
+
+Use the green **Accelerate +10**, yellow **Brake -10**, red **Stop**, or blue **Auto Demo** pushbuttons. The simulated vehicle speed is derived from virtual Hall-compatible pulses. When stopped, the animated car and stepper should stop; the TFT retains the peak and pre-stop readings.
+
+**Current test limitation:** The new Wokwi project source was loaded into the browser, but the attempted online build returned `Build failed! Failed to fetch`. This is a Wokwi build-network error, not evidence of a successful new firmware run. Physical hardware is still untested. Try **Start Simulation** again when Wokwi's build service works, and verify both the TFT car and the stepper motor before presenting them as working.

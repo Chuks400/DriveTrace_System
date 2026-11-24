@@ -1,4 +1,4 @@
-{
+﻿{
     "version":  1,
     "author":  "DriveTrace",
     "editor":  "wokwi",
@@ -116,6 +116,36 @@
                       "left":  -80,
                       "attrs":  {
                                     "text":  "GPIO6 -\u003e GPIO4 = synthetic wheel magnet pulse (not a physical Hall sensor)"
+                                }
+                  },
+                  {
+                      "type":  "wokwi-stepper-motor",
+                      "id":  "wheelMotor",
+                      "top":  -15,
+                      "left":  -540,
+                      "attrs":  {
+                                    "size":  "17",
+                                    "display":  "angle",
+                                    "arrow":  "orange",
+                                    "gearRatio":  "1:1"
+                                }
+                  },
+                  {
+                      "type":  "wokwi-a4988",
+                      "id":  "motorDriver",
+                      "top":  160,
+                      "left":  -450,
+                      "attrs":  {
+
+                                }
+                  },
+                  {
+                      "type":  "wokwi-text",
+                      "id":  "motorNote",
+                      "top":  330,
+                      "left":  -540,
+                      "attrs":  {
+                                    "text":  "ROTATING WHEEL INDICATOR - not powered vehicle propulsion"
                                 }
                   }
               ],
@@ -395,6 +425,94 @@
                         [
                             "overspeedLed:C",
                             "esp:GND.2",
+                            "black",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "esp:38",
+                            "motorDriver:STEP",
+                            "orange",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "esp:39",
+                            "motorDriver:DIR",
+                            "purple",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "esp:3V3.1",
+                            "motorDriver:VDD",
+                            "red",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "esp:GND.1",
+                            "motorDriver:GND",
+                            "black",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "motorDriver:RESET",
+                            "motorDriver:SLEEP",
+                            "green",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "motorDriver:2B",
+                            "wheelMotor:A-",
+                            "blue",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "motorDriver:2A",
+                            "wheelMotor:A+",
+                            "green",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "motorDriver:1A",
+                            "wheelMotor:B+",
+                            "yellow",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "motorDriver:1B",
+                            "wheelMotor:B-",
+                            "purple",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "esp:3V3.1",
+                            "motorDriver:RESET",
+                            "red",
+                            [
+
+                            ]
+                        ],
+                        [
+                            "esp:GND.1",
+                            "motorDriver:ENABLE",
                             "black",
                             [
 
