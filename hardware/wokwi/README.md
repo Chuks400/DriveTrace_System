@@ -2,6 +2,12 @@
 
 This is the **virtual hardware companion** to the existing DriveTrace PC dashboard. No new DriveTrace application or Git repository is needed.
 
+## DriveTrace Wokwi Circuit Overview
+
+![Annotated DriveTrace Wokwi virtual hardware circuit](drivetrace-wokwi-circuit.png)
+
+*Figure 1: Annotated screenshot of the DriveTrace virtual hardware demonstration, showing the ESP32-S3, TFT display, wheel indicator, stepper driver, storage, sensors and driving controls. The screenshot shows a demonstration configuration that differs from the checked-in circuit described below; it is not a physical wiring reference.*
+
 ## What the Wokwi circuit contains
 
 - ESP32-S3 DevKitC-1 microcontroller.
