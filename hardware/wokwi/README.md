@@ -2,6 +2,12 @@
 
 This is the **virtual hardware companion** to the existing DriveTrace PC dashboard. No new DriveTrace application or Git repository is needed.
 
+## DriveTrace Wokwi Circuit Overview
+
+![Annotated DriveTrace Wokwi virtual hardware circuit](drivetrace-wokwi-circuit.png)
+
+*Figure 1: Annotated screenshot of the DriveTrace virtual hardware demonstration, showing the ESP32-S3, TFT display, wheel indicator, stepper driver, storage, sensors and driving controls. The screenshot shows a demonstration configuration that differs from the checked-in circuit described below; it is not a physical wiring reference.*
+
 ## What the Wokwi circuit contains
 
 - ESP32-S3 DevKitC-1 microcontroller.
@@ -17,18 +23,20 @@ This is the **virtual hardware companion** to the existing DriveTrace PC dashboa
 
 No physical GPS simulation is included, because the Wokwi part set used here does not provide the NEO-M8N GPS module. The real GPS remains part of the planned hardware.
 
-## Open and run in the Wokwi website
+## Open and run in Wokwi
 
-1. Visit https://wokwi.com/projects/new/esp32-s3 .
-2. In the **sketch.ino** tab, replace the starter sketch with the full contents of **this folder's sketch.ino**.
-3. In the **diagram.json** tab, replace the default diagram with **this folder's diagram.json**. The board and wires should appear.
-4. Use **Library Manager** to add **Adafruit GFX Library**, **Adafruit ILI9341**, and **RTClib**. Their names are also in **libraries.txt** for Wokwi projects that expose that file.
-5. Click the green **Start Simulation / Play** button and look at the TFT and Serial Monitor.
-6. Press **Auto Demo** on the circuit. The virtual vehicle accelerates from 10 km/h to 70 km/h, exceeds a **50 km/h example threshold**, brakes, and stops. The LCD retains the recorded peak, pre-stop speed and overspeed event.
-7. Use **Accelerate +10**, **Brake -10**, and **Stop** for manual tests.
-8. The Serial Monitor shows timestamped synthetic telemetry; type **DUMP** and press Enter (if your Wokwi Serial Monitor accepts input) to print the CSV saved by the virtual microSD.
+**[Launch the saved DriveTrace Wokwi simulation](https://wokwi.com/projects/481484838266167297)**
 
-**Save** your Wokwi project in your own Wokwi account if you want a shareable Wokwi project URL. The three project-source files are maintained in this GitHub repository; Wokwi's website save/share step is separate.
+1. Open the saved DriveTrace project using the link above.
+2. Click the green **Start Simulation / Play** button.
+3. Press **Auto Demo** to run the automatic driving sequence, or use **Accelerate +10**, **Brake -10**, and **Stop** for manual control.
+4. Observe the TFT display, overspeed indicator and Serial Monitor.
+
+The saved demonstration is intended to open without manually copying firmware or circuit files. Wokwi may take time to compile and initialize the simulation. The saved online project may differ from the source files checked into this repository.
+
+### Recreate the simulation from GitHub (optional)
+
+If you prefer to run the repository version, open a [new ESP32-S3 project](https://wokwi.com/projects/new/esp32-s3), copy [sketch.ino](sketch.ino) and [diagram.json](diagram.json) into their corresponding editor tabs, and install the libraries listed in [libraries.txt](libraries.txt): Adafruit GFX Library, Adafruit ILI9341 and RTClib. Start the simulation and use the virtual controls. In the repository firmware, the Serial Monitor command `DUMP` prints the ride CSV when storage and serial input are available.
 
 ## How the virtual bike works
 
