@@ -1,7 +1,5 @@
 # DriveTrace — Hardware Purchase List
 
-Based on the uploaded five-page DriveTrace proposal, with purchase order and safety/compatibility notes added.
-
 ## Order A — Core parts for first physical prototype
 
 | Qty | Component | What to look for | Why |
