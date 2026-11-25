@@ -112,7 +112,7 @@ The importer requires timezone-aware `timestamp_utc` and nonnegative `speed_kmh`
 | `docs/WIRING_PHASE3.md` | Provisional wiring plan |
 | `docs/PHASE4_HARDWARE_NOTES.md` | Hardware limitations and integration details |
 | `docs/TEACHER_DEMO.md` | Short classroom demonstration script |
-| `HARDWARE_PURCHASE_LIST.md` and `DriveTrace_Hardware.pdf` | Teacher hardware purchase list |
+| `HARDWARE_LIST.md` and `DriveTrace_Hardware.pdf` | Teacher hardware purchase list |
 | `tests/` | Python automated tests |
 | `samples/` | Fictional replay and CSV files |
 
