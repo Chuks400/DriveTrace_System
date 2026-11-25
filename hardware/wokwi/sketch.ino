@@ -88,7 +88,7 @@ void setTarget(float newKmh) {
 void pulseWheelSignal() {
   uint32_t now = micros();
   if (virtualTargetKmh <= 0) {
-    digitalWrite(WHEEL_PULSE_OUT, HIGH);
+    if (pulseLow) digitalWrite(WHEEL_PULSE_OUT, HIGH);
     pulseLow = false;
     nextPulseUs = now;
     return;
@@ -272,6 +272,7 @@ void textOnTFT(int x, int y, const String &value, int size, uint16_t color,
   tft.print(value);
 }
 
+// WOKWI_PERF_V2: static background, partial redraw and less busy looping.
 void setupTFT() {
   // Wokwi's ILI9341 board is shown in portrait orientation, 240 x 320.
   tft.begin();
@@ -280,9 +281,15 @@ void setupTFT() {
   tft.fillRect(0, 0, 240, 28, ILI9341_BLUE);
   textOnTFT(8, 7, "DriveTrace", 2, ILI9341_WHITE, ILI9341_BLUE);
   textOnTFT(5, 110, "SIMULATED E-BIKE / CAR", 1, ILI9341_CYAN);
+  textOnTFT(166, 58, "km/h", 2, ILI9341_WHITE);
+  textOnTFT(7, 91, "LIMIT " + String(SPEED_LIMIT_KMH, 0) + " km/h", 1, ILI9341_YELLOW);
+  tft.fillRect(0, 135, 240, 41, ILI9341_CYAN);
+  tft.fillRect(0, 176, 240, 53, ILI9341_DARKGREY);
+  for (int x = 0; x < 240; x += 52) tft.fillRect(x, 211, 26, 3, ILI9341_YELLOW);
 }
 
 void drawVehicle() {
+  static int previousX = -1;
   bool driving = measuredKmh > 0.5f;
   uint32_t nowMs = millis();
   if (lastCarAdvanceMs == 0) lastCarAdvanceMs = nowMs;
@@ -295,13 +302,12 @@ void drawVehicle() {
     animatedWheelPhase += measuredKmh * elapsed / 2200.0f;
   }
   int x = (int)animatedCarX;
-  tft.fillRect(0, 124, 240, 105, ILI9341_NAVY);
-  tft.fillRect(0, 135, 240, 41, ILI9341_CYAN);
-  tft.fillRect(0, 176, 240, 53, ILI9341_DARKGREY);
-  for (int lane = 0; lane < 240; lane += 52) {
-    int lineX = lane - ((int)(animatedCarX * 2) % 52);
-    if (lineX >= 0 && lineX < 240) tft.fillRect(lineX, 211, 26, 3, ILI9341_YELLOW);
+  // Erase only the previous car footprint, preserving the static road and sky.
+  if (previousX >= 0) {
+    tft.fillRect(previousX, 160, 82, 16, ILI9341_CYAN);
+    tft.fillRect(previousX, 176, 82, 36, ILI9341_DARKGREY);
   }
+  previousX = x;
   // Vehicle body and wheels share the same x offset.
   tft.fillRoundRect(x, 174, 79, 20, 4, ILI9341_BLUE);
   tft.fillRoundRect(x + 16, 161, 43, 17, 4, ILI9341_BLUE);
@@ -325,22 +331,46 @@ void drawVehicle() {
 }
 
 void refreshTFT() {
-  tft.fillRect(0, 32, 240, 77, ILI9341_NAVY);
-  textOnTFT(9, 39, String(measuredKmh, 1), 4, ILI9341_WHITE);
-  textOnTFT(166, 58, "km/h", 2, ILI9341_WHITE);
-  textOnTFT(7, 91, "LIMIT " + String(SPEED_LIMIT_KMH, 0) + " km/h", 1, ILI9341_YELLOW);
-  drawVehicle();
-  tft.fillRect(0, 232, 240, 52, ILI9341_NAVY);
-  textOnTFT(7, 235, "PEAK " + String(peakKmh, 1) + " km/h", 2, ILI9341_WHITE);
-  textOnTFT(7, 258, "PRE-STOP " + String(preStopKmh, 1), 2, ILI9341_CYAN);
-  uint16_t status = overspeedSeen ? ILI9341_RED :
-                    recording ? ILI9341_DARKGREEN : ILI9341_DARKGREY;
-  tft.fillRect(0, 287, 240, 33, status);
-  textOnTFT(7, 294,
-            overspeedSeen ? "OVER SPEED!" : recording ? "RECORDING" : "STANDBY",
-            2, ILI9341_WHITE, status);
+  // Redraw readings only when changed; the moving car redraws its own footprint.
+  static int speed10 = -1, peak10 = -1, pre10 = -1, statusOld = -1;
+  static bool previousMoving = false, carDrawn = false;
+  int speedNow = (int)roundf(measuredKmh * 10.0f);
+  int peakNow = (int)roundf(peakKmh * 10.0f);
+  int preNow = (int)roundf(preStopKmh * 10.0f);
+  int status = overspeedSeen ? 2 : recording ? 1 : 0;
+  bool moving = measuredKmh > 0.5f;
+  if (speedNow != speed10) {
+    tft.fillRect(7, 37, 155, 49, ILI9341_NAVY);
+    textOnTFT(9, 39, String(measuredKmh, 1), 4, ILI9341_WHITE);
+    speed10 = speedNow;
+  }
+  if (peakNow != peak10) {
+    tft.fillRect(7, 233, 230, 21, ILI9341_NAVY);
+    textOnTFT(7, 235, "PEAK " + String(peakKmh, 1) + " km/h", 2, ILI9341_WHITE);
+    peak10 = peakNow;
+  }
+  if (preNow != pre10) {
+    tft.fillRect(7, 257, 230, 22, ILI9341_NAVY);
+    textOnTFT(7, 258, "PRE-STOP " + String(preStopKmh, 1), 2, ILI9341_CYAN);
+    pre10 = preNow;
+  }
+  if (moving || moving != previousMoving || !carDrawn) {
+    drawVehicle();
+    if (moving != previousMoving || !carDrawn) {
+      tft.fillRect(0, 217, 240, 12, ILI9341_DARKGREY);
+      textOnTFT(6, 220, moving ? "MOVING" : "STOPPED", 1,
+                moving ? ILI9341_GREEN : ILI9341_WHITE, ILI9341_DARKGREY);
+    }
+    previousMoving = moving;
+    carDrawn = true;
+  }
+  if (status != statusOld) {
+    uint16_t bg = status == 2 ? ILI9341_RED : status == 1 ? ILI9341_DARKGREEN : ILI9341_DARKGREY;
+    tft.fillRect(0, 287, 240, 33, bg);
+    textOnTFT(7, 294, status == 2 ? "OVER SPEED!" : status == 1 ? "RECORDING" : "STANDBY", 2, ILI9341_WHITE, bg);
+    statusOld = status;
+  }
 }
-
 void dumpRide() {
   if (!sdReady) { Serial.println("NO_SD_CARD"); return; }
   File f = SD.open("/RIDE.CSV", FILE_READ);
@@ -409,14 +439,18 @@ void loop() {
   runDemo();
   pulseWheelSignal();
   driveWheelMotor();
-  readWheelSpeed();
   uint32_t now = millis();
+  static uint32_t lastWheelReadMs = 0;
+  if (now - lastWheelReadMs >= 40) {
+    lastWheelReadMs = now;
+    readWheelSpeed();
+  }
   if (now - lastLogMs >= 1000) {
     lastLogMs = now;
     readImu();
     logSample();
   }
-  if (now - lastSerialMs >= 1000) {
+  if (now - lastSerialMs >= 2000) {
     lastSerialMs = now;
     noInterrupts(); uint32_t count = hallPulses; interrupts();
     Serial.print("{\"type\":\"telemetry\",\"simulated\":true,\"source\":\"WOKWI\",\"speed_kmh\":");
@@ -428,9 +462,10 @@ void loop() {
     Serial.print(",\"imu_az_g\":"); Serial.print(imuAz, 3);
     Serial.println(",\"gps_valid\":false}");
   }
-  if (now - lastScreenMs >= 650) {
+  if (now - lastScreenMs >= (virtualTargetKmh > 0 ? 350U : 1100U)) {
     lastScreenMs = now;
     refreshTFT();
   }
-  delay(1);
+  // Wokwi recommends sleeping between loop iterations to reduce emulator load.
+  delay(5);
 }
